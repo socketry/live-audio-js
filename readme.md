@@ -18,15 +18,20 @@ This is a Web Audio API-based library for game audio synthesis and background mu
 ```html
 <script type="module">
   import { Audio } from '@socketry/live-audio';
-  import { MeowSound, ExplosionSound, BackgroundMusicSound } from '@socketry/live-audio/Library';
+  import { MeowSound, ExplosionSound, BackgroundMusicSound } from '@socketry/live-audio/Live/Audio/Library.js';
   
   // Audio.start() pattern - follows Live.js conventions
-  window.liveAudio = await Audio.start((controller) => {
-    controller.addSound('meow', MeowSound);
-    controller.addSound('explosion', ExplosionSound);
-    controller.addSound('music', BackgroundMusicSound);
-    controller.setVolume(0.8);
-  });
+  window.liveAudio = Audio.start();
+  
+  // Add sounds using the controller
+  const meow = new MeowSound();
+  const explosion = new ExplosionSound();
+  const music = new BackgroundMusicSound('/assets/music.mp3', 10.0, 45.0);
+  
+  window.liveAudio.addSound('meow', meow);
+  window.liveAudio.addSound('explosion', explosion);
+  window.liveAudio.addSound('music', music);
+  window.liveAudio.setVolume(0.8);
   
   // Play sounds anywhere in your app
   window.liveAudio.playSound('meow');
@@ -37,13 +42,15 @@ This is a Web Audio API-based library for game audio synthesis and background mu
 
 ```javascript
 import { Audio } from '@socketry/live-audio';
-import { CoinSound, LaserSound } from '@socketry/live-audio/Library';
+import { CoinSound, LaserSound } from '@socketry/live-audio/Live/Audio/Library.js';
 
-const controller = await Audio.createController();
+const controller = Audio.start();
 
 // Add and play sounds
-controller.addSound('coin', CoinSound);
-controller.addSound('laser', LaserSound);
+const coin = new CoinSound();
+const laser = new LaserSound();
+controller.addSound('coin', coin);
+controller.addSound('laser', laser);
 controller.playSound('coin');
 controller.setVolume(0.8);
 ```
@@ -78,8 +85,11 @@ import { Controller, Sound } from '@socketry/live-audio';
 // Full access including visualization
 import { Controller, Sound, Visualizer, Output } from '@socketry/live-audio';
 
-// Pre-built sound library
-import * as Library from '@socketry/live-audio/Library';
+// Pre-built sound library - individual imports (recommended)
+import { MeowSound, ExplosionSound, BackgroundMusicSound } from '@socketry/live-audio/Live/Audio/Library.js';
+
+// Pre-built sound library - namespace import
+import * as Library from '@socketry/live-audio/Live/Audio/Library.js';
 ```
 
 ## API Reference
@@ -90,23 +100,21 @@ The primary entry point following Live.js conventions.
 
 #### Methods
 
-- `Audio.start(callback)` - Initialize audio with configuration callback (recommended)
-  - `callback(controller)` - Optional function called with the shared controller instance
-  - Returns the controller instance
-- `Audio.createController(options)` - Create a new controller instance
+- `Audio.start(options)` - Create a new controller instance (recommended)
   - `options.window` - The window object to use (defaults to globalThis)
-- `Audio.getSharedAudioContext(window)` - Get or create shared AudioContext
+  - Returns the controller instance
 - `Audio.Controller` - Direct access to Controller class for advanced usage
 
 #### Example
 
 ```javascript
 import { Audio } from '@socketry/live-audio';
+import { JumpSound } from '@socketry/live-audio/Live/Audio/Library.js';
 
-const controller = await Audio.start((controller) => {
-  controller.addSound('jump', JumpSound);
-  controller.setVolume(0.8);
-});
+const controller = Audio.start();
+const jump = new JumpSound();
+controller.addSound('jump', jump);
+controller.setVolume(0.8);
 ```
 
 ### Controller
@@ -115,19 +123,16 @@ The main audio controller class that manages all sound playbook and audio contex
 
 #### Constructor
 
-- `new Controller(audioContext, window)` - Create a controller instance
-  - `audioContext` - The AudioContext to use (required)
+- `new Controller(window)` - Create a controller instance
   - `window` - The window object to use (defaults to globalThis)
 
 #### Factory Methods
 
-- `Controller.start()` - Removed (use `Audio.createController()` instead)
-- `Controller.shared()` - Removed (use `Audio.start()` or `Audio.createController()` instead)
+- `Audio.start(options)` - Create a controller instance (recommended approach)
 
 #### Instance Methods
 
-- `add(name, soundInstance)` - Add a pre-instantiated sound
-- `addSound(name, SoundClass)` - Create and add a sound from a class
+- `addSound(name, soundInstance)` - Add a sound instance to the controller
 - `playSound(name)` - Play a sound by name
 - `stopSound(name)` - Stop a sound by name
 - `stopAllSounds()` - Stop all sounds
@@ -146,20 +151,21 @@ Base class for creating custom sound effects. Extend this class to create your o
 import { Sound } from '@socketry/live-audio';
 
 class CustomSound extends Sound {
-	start() {
-		const oscillator = this.audioContext.createOscillator();
-		const gainNode = this.audioContext.createGain();
+	start(output) {
+		const audioContext = output.audioContext;
+		const oscillator = audioContext.createOscillator();
+		const gainNode = audioContext.createGain();
 		
 		oscillator.type = 'sine';
 		oscillator.frequency.value = 440;
 		
-		this.createEnvelope(gainNode, 0.01, 0.1, 0.5, 0.2, 0.5);
+		this.createEnvelope(audioContext, gainNode, 0.01, 0.1, 0.5, 0.2, 0.5);
 		
 		oscillator.connect(gainNode);
-		gainNode.connect(this.output.input);
+		gainNode.connect(output.input);
 		
 		oscillator.start();
-		oscillator.stop(this.audioContext.currentTime + 0.5);
+		oscillator.stop(audioContext.currentTime + 0.5);
 	}
 }
 ```
@@ -197,20 +203,24 @@ The library includes a comprehensive collection of pre-built sound classes in `L
 - `AlienSound` - Alien sound with ring modulation
 
 ### Background Music
-- `BackgroundMusicSound` - MP3 background music with loop points
+- `BackgroundMusicSound(url, loopStart, loopEnd)` - MP3 background music with required URL and loop points
 
 ### Usage Example
 
 ```javascript
-import { Controller } from '@socketry/live-audio';
-import { MeowSound, ExplosionSound, BackgroundMusicSound } from '@socketry/live-audio/Library';
+import { Audio } from '@socketry/live-audio';
+import { MeowSound, ExplosionSound, BackgroundMusicSound } from '@socketry/live-audio/Live/Audio/Library.js';
 
-const controller = await Controller.shared();
+const controller = Audio.start();
 
 // Add sounds from the library
-controller.addSound('meow', MeowSound);
-controller.addSound('explosion', ExplosionSound);
-controller.addSound('music', BackgroundMusicSound);
+const meow = new MeowSound();
+const explosion = new ExplosionSound();
+const music = new BackgroundMusicSound('/assets/background.mp3', 10.5, 45.2); // Custom URL and loop points
+
+controller.addSound('meow', meow);
+controller.addSound('explosion', explosion);
+controller.addSound('music', music);
 
 // Play them
 controller.playSound('meow');

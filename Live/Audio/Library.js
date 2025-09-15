@@ -611,8 +611,11 @@ export class HowlSound extends Sound {
 
 // Background Music class extending Sound with MP3 playback and loop points
 export class BackgroundMusicSound extends Sound {
-	constructor() {
+	constructor(url, loopStart, loopEnd) {
 		super();
+		this.url = url;
+		this.loopStart = loopStart;
+		this.loopEnd = loopEnd;
 		this.source = null;
 		this.gainNode = null;
 		this.audioBuffer = null;
@@ -645,16 +648,14 @@ export class BackgroundMusicSound extends Sound {
 	}
 	
 	async loadAudioBuffer(audioContext) {
-		const musicUrl = '/music.mp3';
-		
-		console.log('Loading background music from:', musicUrl);
+		console.log('Loading background music from:', this.url);
 		
 		try {
 			// Add a timeout to prevent hanging
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 			
-			const response = await fetch(musicUrl, { 
+			const response = await fetch(this.url, { 
 				signal: controller.signal 
 			});
 			clearTimeout(timeoutId);
@@ -679,8 +680,8 @@ export class BackgroundMusicSound extends Sound {
 		this.source.buffer = this.audioBuffer;
 		this.source.loop = true;
 		
-		this.source.loopStart = 32.0 * 60.0 / 80.0;
-		this.source.loopEnd = 96.0 * 60.0 / 80.0;
+		this.source.loopStart = this.loopStart;
+		this.source.loopEnd = this.loopEnd;
 		
 		this.source.connect(this.gainNode);
 		
