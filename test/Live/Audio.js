@@ -536,4 +536,84 @@ describe('Live Audio', function () {
 		ok(controller);
 		ok(controller instanceof Controller);
 	});
+	
+	it('should call onOutputCreated callback when output is created', async function () {
+		let callbackCalled = false;
+		let callbackController = null;
+		let callbackOutput = null;
+		
+		const controller = new Controller(globalThis, {
+			onOutputCreated: (ctrl, output) => {
+				callbackCalled = true;
+				callbackController = ctrl;
+				callbackOutput = output;
+			}
+		});
+		
+		// Callback should not be called yet
+		ok(!callbackCalled);
+		
+		// Acquire output should trigger the callback
+		const output = await controller.acquireOutput();
+		
+		ok(callbackCalled);
+		strictEqual(callbackController, controller);
+		strictEqual(callbackOutput, output);
+		ok(output instanceof Output);
+	});
+	
+	it('should call onOutputDisposed callback when controller is disposed', async function () {
+		let disposalCallbackCalled = false;
+		let disposalController = null;
+		let disposalOutput = null;
+		
+		const controller = new Controller(globalThis, {
+			onOutputDisposed: (ctrl, output) => {
+				disposalCallbackCalled = true;
+				disposalController = ctrl;
+				disposalOutput = output;
+			}
+		});
+		
+		// Create output first
+		const output = await controller.acquireOutput();
+		ok(output);
+		
+		// Callback should not be called yet
+		ok(!disposalCallbackCalled);
+		
+		// Dispose should trigger the callback
+		controller.dispose();
+		
+		ok(disposalCallbackCalled);
+		strictEqual(disposalController, controller);
+		strictEqual(disposalOutput, output);
+	});
+	
+	it('should not call callbacks if they are not provided', async function () {
+		// Should not throw when callbacks are null/undefined
+		const controller = new Controller();
+		
+		const output = await controller.acquireOutput();
+		ok(output);
+		
+		// Should not throw
+		controller.dispose();
+	});
+	
+	it('should allow callback to access audioContext via output', async function () {
+		let receivedAudioContext = null;
+		
+		const controller = new Controller(globalThis, {
+			onOutputCreated: (ctrl, output) => {
+				receivedAudioContext = output.audioContext;
+			}
+		});
+		
+		const output = await controller.acquireOutput();
+		
+		ok(receivedAudioContext);
+		strictEqual(receivedAudioContext, output.audioContext);
+		strictEqual(receivedAudioContext.state, 'running');
+	});
 });

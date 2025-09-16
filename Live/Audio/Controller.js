@@ -29,12 +29,17 @@ export class Controller {
 	#window = null;
 	#audioContext = null;
 	#output = null;
-	#analysis = null;
 	#sounds = {};
 	#volume = 1.0;
 	
-	constructor(window = globalThis) {
+	// Callbacks:
+	#onOutputCreated = null;
+	#onOutputDisposed = null;
+	
+	constructor(window = globalThis, options = {}) {
 		this.#window = window;
+		this.#onOutputCreated = options.onOutputCreated || null;
+		this.#onOutputDisposed = options.onOutputDisposed || null;
 	}
 	
 	// Acquire output with AudioContext ready - returns null if not available.
@@ -52,9 +57,9 @@ export class Controller {
 			// Apply the controller's volume to the new output
 			output.setVolume(this.#volume);
 			
-			// Connect analysis node if one has been set
-			if (this.#analysis) {
-				output.connectAnalysis(this.#analysis);
+			// Call the output created callback if provided
+			if (this.#onOutputCreated) {
+				this.#onOutputCreated(this, output);
 			}
 		}
 		
@@ -118,16 +123,6 @@ export class Controller {
 		return false;
 	}
 	
-	// Set a custom analysis node (e.g., a Visualizer instance)
-	set analysis(analysisNode) {
-		this.#analysis = analysisNode;
-		
-		// If output exists, connect the new analysis node
-		if (this.#output) {
-			this.#output.connectAnalysis(this.#analysis);
-		}
-	}
-	
 	// Set master volume
 	async setVolume(volume) {
 		this.#volume = volume;
@@ -144,11 +139,6 @@ export class Controller {
 		return this.#volume;
 	}
 	
-	// Get analysis instance (for testing)
-	get analysis() {
-		return this.#analysis;
-	}
-	
 	// Get sounds object (for testing)
 	get sounds() {
 		return this.#sounds;
@@ -157,5 +147,22 @@ export class Controller {
 	// Get window object (for testing)
 	get window() {
 		return this.#window;
+	}
+	
+	// Dispose of the controller and clean up resources
+	dispose() {
+		if (this.#output) {
+			const output = this.#output;
+			
+			// Call the disposal callback if provided
+			if (this.#onOutputDisposed) {
+				this.#onOutputDisposed(this, output);
+			}
+			
+			output.dispose();
+			this.#output = null;
+		}
+		
+		this.#sounds = {};
 	}
 }

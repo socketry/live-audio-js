@@ -68,4 +68,20 @@ export class Output {
 	setVolume(volume) {
 		this.#gainNode.gain.value = volume;
 	}
+	
+	// Clean up resources
+	dispose() {
+		if (this.#gainNode) {
+			this.#gainNode.disconnect();
+			this.#gainNode = null;
+		}
+		
+		if (this.#analysisNode) {
+			this.#analysisNode.disconnect();
+			this.#analysisNode = null;
+		}
+		
+		this.#audioContext = null;
+		this.#destination = null;
+	}
 }

@@ -16,7 +16,7 @@ export * as Library from './Audio/Library.js';
 export const Audio = {
 	start(options = {}) {
 		const window = options.window || globalThis;
-		return new Controller(window);
+		return new Controller(window, options);
 	},
 	
 	// Direct access to Controller for advanced usage
