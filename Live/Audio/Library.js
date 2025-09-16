@@ -609,13 +609,12 @@ export class HowlSound extends Sound {
 	}
 }
 
-// Background Music class extending Sound with MP3 playback and loop points
-export class BackgroundMusicSound extends Sound {
-	constructor(url, loopStart, loopEnd) {
+// Sample Sound class - loads and plays audio files (one-shot by default)
+export class SampleSound extends Sound {
+	constructor(url, volume = 0.8) {
 		super();
 		this.url = url;
-		this.loopStart = loopStart;
-		this.loopEnd = loopEnd;
+		this.volume = volume;
 		this.source = null;
 		this.gainNode = null;
 		this.audioBuffer = null;
@@ -624,7 +623,7 @@ export class BackgroundMusicSound extends Sound {
 	
 	async start(output) {
 		if (this.isPlaying) {
-			console.log('Background music is already playing');
+			console.log('Sample is already playing');
 			return;
 		}
 		
@@ -633,7 +632,7 @@ export class BackgroundMusicSound extends Sound {
 		
 		try {
 			this.gainNode = audioContext.createGain();
-			this.gainNode.gain.value = 0.8;
+			this.gainNode.gain.value = this.volume;
 			this.gainNode.connect(inputNode);
 			
 			if (!this.audioBuffer) {
@@ -641,14 +640,14 @@ export class BackgroundMusicSound extends Sound {
 			}
 			
 			this.playAudioBuffer(audioContext);
-			console.log('Background music started');
+			console.log('Sample started:', this.url);
 		} catch (error) {
-			console.error('Failed to start background music:', error);
+			console.error('Failed to start sample:', error);
 		}
 	}
 	
 	async loadAudioBuffer(audioContext) {
-		console.log('Loading background music from:', this.url);
+		console.log('Loading sample from:', this.url);
 		
 		try {
 			// Add a timeout to prevent hanging
@@ -667,9 +666,9 @@ export class BackgroundMusicSound extends Sound {
 			const arrayBuffer = await response.arrayBuffer();
 			this.audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 			
-			console.log(`Background music loaded: ${this.audioBuffer.duration.toFixed(2)}s`);
+			console.log(`Sample loaded: ${this.audioBuffer.duration.toFixed(2)}s`);
 		} catch (error) {
-			console.warn('Failed to load background music:', error.message);
+			console.warn('Failed to load sample:', error.message);
 			// Create a dummy silent buffer so the sound doesn't fail completely
 			this.audioBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate);
 		}
@@ -678,10 +677,9 @@ export class BackgroundMusicSound extends Sound {
 	playAudioBuffer(audioContext) {
 		this.source = audioContext.createBufferSource();
 		this.source.buffer = this.audioBuffer;
-		this.source.loop = true;
 		
-		this.source.loopStart = this.loopStart;
-		this.source.loopEnd = this.loopEnd;
+		// Configure looping (overridden in subclasses)
+		this.configurePlayback(this.source);
 		
 		this.source.connect(this.gainNode);
 		
@@ -692,6 +690,12 @@ export class BackgroundMusicSound extends Sound {
 		
 		this.source.start(0);
 		this.isPlaying = true;
+	}
+	
+	// Override this method in subclasses to configure looping behavior
+	configurePlayback(source) {
+		// Default: no looping (one-shot)
+		source.loop = false;
 	}
 	
 	stop() {
@@ -710,8 +714,35 @@ export class BackgroundMusicSound extends Sound {
 	}
 	
 	setVolume(volume) {
+		this.volume = volume;
 		if (this.gainNode) {
 			this.gainNode.gain.value = volume;
 		}
+	}
+}
+
+// Background Music class extending SampleSound with looping functionality
+export class BackgroundMusicSound extends SampleSound {
+	constructor(url, loopStart = 0, loopEnd = 0) {
+		super(url, 0.8); // Default volume for background music
+		this.loopStart = loopStart;
+		this.loopEnd = loopEnd;
+	}
+	
+	// Override to configure looping with specific loop points
+	configurePlayback(source) {
+		source.loop = true;
+		source.loopStart = this.loopStart;
+		source.loopEnd = this.loopEnd;
+	}
+	
+	async start(output) {
+		if (this.isPlaying) {
+			console.log('Background music is already playing');
+			return;
+		}
+		
+		await super.start(output);
+		console.log('Background music started with loop points:', this.loopStart, 'to', this.loopEnd);
 	}
 }
