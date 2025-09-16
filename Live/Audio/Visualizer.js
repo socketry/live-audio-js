@@ -1,15 +1,15 @@
 // Analysis Node - handles waveform visualization and audio quality monitoring
 export class Visualizer {
-	constructor(audioContext) {
+	constructor(audioContext, waveformCanvas = null, alertCanvas = null) {
 		this.audioContext = audioContext;
 		this.analyser = audioContext.createAnalyser();
 		this.analyser.fftSize = 2048;
 		this.analyser.smoothingTimeConstant = 0.8;
 		
 		this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-		this.canvas = null;
+		this.canvas = waveformCanvas;
 		this.canvasContext = null;
-		this.alertCanvas = null;
+		this.alertCanvas = alertCanvas;
 		this.alertContext = null;
 		this.animationId = null;
 		
@@ -26,14 +26,16 @@ export class Visualizer {
 		this.peakHistoryIndex = 0;
 		this.rollingPeak = 0;
 		
-		try {
-			this.setupCanvas();
-			this.startVisualization();
-		} catch (error) {
-			// If canvas setup fails, don't start visualization
-			console.warn('Visualizer canvas setup failed:', error.message);
-			this.canvasContext = null;
-			this.alertContext = null;
+		// Only set up canvas and start visualization if canvases are provided
+		if (this.canvas || this.alertCanvas) {
+			try {
+				this.setupCanvas();
+				this.startVisualization();
+			} catch (error) {
+				console.warn('Visualizer canvas setup failed:', error.message);
+				this.canvasContext = null;
+				this.alertContext = null;
+			}
 		}
 	}
 	
@@ -50,32 +52,47 @@ export class Visualizer {
 	}
 	
 	setupCanvas() {
-		this.canvas = document.getElementById('waveform-canvas');
+		// Use provided canvases or fall back to finding/creating them
 		if (!this.canvas) {
-			this.canvas = document.createElement('canvas');
-			this.canvas.id = 'waveform-canvas';
-			this.canvas.width = 800;
-			this.canvas.height = 200;
-			this.canvas.style.border = '2px solid #333';
-			this.canvas.style.borderRadius = '8px';
-			this.canvas.style.background = '#000';
-			document.body.appendChild(this.canvas);
+			this.canvas = document.getElementById('waveform-canvas');
+			if (!this.canvas) {
+				this.canvas = document.createElement('canvas');
+				this.canvas.id = 'waveform-canvas';
+				this.canvas.width = 800;
+				this.canvas.height = 200;
+				this.canvas.style.border = '2px solid #333';
+				this.canvas.style.borderRadius = '8px';
+				this.canvas.style.background = '#000';
+				document.body.appendChild(this.canvas);
+			}
 		}
-		this.canvasContext = this.canvas.getContext('2d');
 		
-		this.alertCanvas = document.getElementById('alert-canvas');
-		if (!this.alertCanvas) {
-			this.alertCanvas = document.createElement('canvas');
-			this.alertCanvas.id = 'alert-canvas';
-			this.alertCanvas.width = 800;
-			this.alertCanvas.height = 100;
-			this.alertCanvas.style.border = '2px solid #333';
-			this.alertCanvas.style.borderRadius = '8px';
-			this.alertCanvas.style.background = '#111';
-			this.alertCanvas.style.marginTop = '10px';
-			this.canvas.parentNode.insertBefore(this.alertCanvas, this.canvas.nextSibling);
+		if (this.canvas) {
+			this.canvasContext = this.canvas.getContext('2d');
 		}
-		this.alertContext = this.alertCanvas.getContext('2d');
+		
+		if (!this.alertCanvas) {
+			this.alertCanvas = document.getElementById('alert-canvas');
+			if (!this.alertCanvas) {
+				this.alertCanvas = document.createElement('canvas');
+				this.alertCanvas.id = 'alert-canvas';
+				this.alertCanvas.width = 800;
+				this.alertCanvas.height = 100;
+				this.alertCanvas.style.border = '2px solid #333';
+				this.alertCanvas.style.borderRadius = '8px';
+				this.alertCanvas.style.background = '#111';
+				this.alertCanvas.style.marginTop = '10px';
+				if (this.canvas && this.canvas.parentNode) {
+					this.canvas.parentNode.insertBefore(this.alertCanvas, this.canvas.nextSibling);
+				} else {
+					document.body.appendChild(this.alertCanvas);
+				}
+			}
+		}
+		
+		if (this.alertCanvas) {
+			this.alertContext = this.alertCanvas.getContext('2d');
+		}
 	}
 	
 	startVisualization() {

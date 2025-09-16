@@ -85,8 +85,6 @@ The main audio controller class that manages all sound playback and audio contex
 - `listSounds()` - Get array of available sound names
 - `removeSound(name)` - Remove a sound from the controller
 - `setVolume(volume)` - Set master volume (0.0 to 1.0)
-- `enableVisualization()` - Enable audio visualization
-- `disableVisualization()` - Disable audio visualization
 - `getSound(name)` - Get direct access to a sound instance
 
 ### Sound

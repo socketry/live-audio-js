@@ -9,6 +9,9 @@ export { Sound } from './Audio/Sound.js';
 export { Visualizer } from './Audio/Visualizer.js';
 export { Output } from './Audio/Output.js';
 
+// Export all sound library classes under Library namespace
+export * as Library from './Audio/Library.js';
+
 // Main Audio namespace with Live.js pattern
 export const Audio = {
 	start(options = {}) {

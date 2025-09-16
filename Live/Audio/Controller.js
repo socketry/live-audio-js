@@ -1,6 +1,5 @@
 // Audio Controller - manages sound instances and provides unified API
 import { Output } from './Output.js';
-import { Visualizer } from './Visualizer.js';
 import { Sound } from './Sound.js';
 
 // Get or create shared AudioContext (keyed by window)
@@ -52,6 +51,11 @@ export class Controller {
 			
 			// Apply the controller's volume to the new output
 			output.setVolume(this.#volume);
+			
+			// Connect analysis node if one has been set
+			if (this.#analysis) {
+				output.connectAnalysis(this.#analysis);
+			}
 		}
 		
 		return output;
@@ -114,31 +118,13 @@ export class Controller {
 		return false;
 	}
 	
-	// Enable/disable visualization
-	async enableVisualization() {
-		const output = await this.acquireOutput();
-		if (!output) return;
+	// Set a custom analysis node (e.g., a Visualizer instance)
+	set analysis(analysisNode) {
+		this.#analysis = analysisNode;
 		
-		// Output already has audioContext ready since it was created with it
-		const audioContext = output.audioContext;
-		
-		// Create visualizer if it doesn't exist
-		if (!this.#analysis) {
-			try {
-				this.#analysis = new Visualizer(audioContext);
-			} catch (error) {
-				console.warn('Live Audio: Visualization not available:', error.message);
-				return;
-			}
-		}
-		
-		// Connect analysis to output
-		output.connectAnalysis(this.#analysis);
-	}
-	
-	disableVisualization() {
+		// If output exists, connect the new analysis node
 		if (this.#output) {
-			this.#output.disconnectAnalysis();
+			this.#output.connectAnalysis(this.#analysis);
 		}
 	}
 	
